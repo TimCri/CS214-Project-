@@ -22,7 +22,8 @@ Each record includes:
 - Medical Condition  
 - Hospital  
 - Insurance Provider  
-- Billing Amount  
+- Billing Amount
+- Admission Type  
 
 ---
 
