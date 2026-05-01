@@ -8,6 +8,7 @@ from model import PatientRecord
 
 
 def load_patient_records(csv_file_path: str | Path, limit: int | None = None) -> List[PatientRecord]:
+    # Resolve the path so the program can reliably find the CSV file.
     csv_path = Path(csv_file_path).expanduser().resolve()
 
     if not csv_path.exists():
@@ -17,7 +18,8 @@ def load_patient_records(csv_file_path: str | Path, limit: int | None = None) ->
 
     with csv_path.open(mode="r", encoding="utf-8", newline="") as file:
         reader = csv.DictReader(file)
-
+        # We assign our own sequential ID to each row.
+        # That gives every record a consistent key for search/delete benchmarks.
         for index, row in enumerate(reader, start=1):
             if limit is not None and len(records) >= limit:
                 break
@@ -37,6 +39,7 @@ def load_patient_records(csv_file_path: str | Path, limit: int | None = None) ->
                     )
                 )
             except (KeyError, ValueError, TypeError) as error:
+                # Bad rows are skipped so one malformed line does not crash the program.
                 print(f"Skipping invalid row {index}: {error}")
 
     return records
