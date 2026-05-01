@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-'
 
-'
+# A simple data container for one patient record.
+# This is the shared model used by every data structure.
+
 @dataclass
 class PatientRecord:
     id: int
