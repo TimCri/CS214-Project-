@@ -1,27 +1,51 @@
 from __future__ import annotations
 
+# Path is used to build a reliable file path to the CSV dataset.
 from pathlib import Path
+
+'''
+These typing tools make the code easier to read and understand:
+- Any: for values/classes whose exact type is flexible here
+- Dict: for dictionary type hints
+- List: for lists of records
+- Tuple: for functions returning more than one value
+'''
 from typing import Any, Dict, List, Tuple
 
+# Import the benchmark result object, time formatter, and the function
+# that runs the chosen benchmark based on the user's menu selections.
 from benchmark import BenchmarkResult, format_seconds, run_selected_benchmark
+
+# Import each data structure implementation used in the menu.
 from dynamic_array_records import DynamicArrayRecords
 from hash_map_records import HashMapRecords
 from linked_list_records import LinkedListRecords
-from loader import load_patient_records
-from model import PatientRecord
 from queue_records import QueueRecords
 
+# Import the CSV loader that converts dataset rows into PatientRecord objects.
+from loader import load_patient_records
 
+# Import the shared patient record model.
+from model import PatientRecord
+'''
+This alias makes the structure menu mapping easier to read.
+The dictionary key is the display name shown to the user,
+and the value is the class that implements that structure.
+'''
 StructureMap = Dict[str, Any]
 
 
 def print_header() -> None:
+    # Prints the title shown when the program starts.
+    # This is only for presentation and does not affect logic.
     print("\n" + "=" * 72)
     print("PATIENT RECORD DATA STRUCTURE BENCHMARK SYSTEM")
     print("=" * 72)
 
 
 def print_menu() -> None:
+    # Prints the main program menu.
+    # The loop in main() will keep showing this until the user exits.
     print("\nMain Menu")
     print("1. Run benchmark")
     print("2. Exit")
@@ -29,15 +53,17 @@ def print_menu() -> None:
 
 def get_user_choice(prompt: str, minimum: int, maximum: int) -> int:
     # This helper keeps asking until the user enters a valid number in range.
+    # It prevents duplicated try/except logic in the rest of the program.
     while True:
         raw_value = input(prompt).strip()
 
         try:
             choice = int(raw_value)
         except ValueError:
+            # If the input is not a number, ask again.
             print("Invalid input. Please enter a number.")
             continue
-
+        # Only accept values inside the expected range.
         if minimum <= choice <= maximum:
             return choice
 
@@ -45,24 +71,31 @@ def get_user_choice(prompt: str, minimum: int, maximum: int) -> int:
 
 
 def choose_structure(structures: StructureMap) -> Tuple[str, Any]:
+    # Turn the dictionary keys into a list so the user can choose by number.
     structure_names = list(structures.keys())
 
     print("\nSelect a data structure:")
     for index, name in enumerate(structure_names, start=1):
         print(f"{index}. {name}")
-
+    # The chosen number maps back to the structure name and class.
     choice = get_user_choice("Enter your choice: ", 1, len(structure_names))
     selected_name = structure_names[choice - 1]
+    
+    # Return both:
+    # - the name for display
+    # - the class for running the benchmark
     return selected_name, structures[selected_name]
 
 
 def choose_operation() -> str:
+    # These are the supported benchmark operations required by the project.
     operations = ["insert", "delete", "traverse", "search"]
 
     print("\nSelect an operation:")
     for index, name in enumerate(operations, start=1):
         print(f"{index}. {name.capitalize()}")
-
+        
+    # Return the operation string used later by the benchmark module.
     choice = get_user_choice("Enter your choice: ", 1, len(operations))
     return operations[choice - 1]
 
