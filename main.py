@@ -28,6 +28,7 @@ def print_menu() -> None:
 
 
 def get_user_choice(prompt: str, minimum: int, maximum: int) -> int:
+    # This helper keeps asking until the user enters a valid number in range.
     while True:
         raw_value = input(prompt).strip()
 
@@ -103,6 +104,7 @@ def print_benchmark_result(result: BenchmarkResult) -> None:
 
 
 def main() -> None:
+    # The CSV file is expected to be in the same project folder as this script.
     base_dir = Path(__file__).resolve().parent
     csv_file_path = base_dir / "healthcare_dataset.csv"
 
@@ -115,7 +117,7 @@ def main() -> None:
     if not all_records:
         print("No patient records were loaded.")
         return
-
+    # Each menu label maps to the class that implements that data structure.
     structures: StructureMap = {
         "Dynamic Array": DynamicArrayRecords,
         "Linked List": LinkedListRecords,
@@ -126,7 +128,7 @@ def main() -> None:
     print_header()
     print(f"Loaded {len(all_records)} patient records from the dataset.")
     print_sample_records(all_records)
-
+    # Keep looping until the user chooses to exit.
     while True:
         print_menu()
         main_choice = get_user_choice("Enter your choice: ", 1, 2)
@@ -138,7 +140,7 @@ def main() -> None:
         structure_name, structure_class = choose_structure(structures)
         operation_name = choose_operation()
         record_count = choose_record_count(len(all_records))
-
+        # The user can benchmark only a subset of the dataset.
         selected_records = all_records[:record_count]
 
         try:
@@ -154,7 +156,7 @@ def main() -> None:
             continue
 
         print_benchmark_result(result)
-
+        # After each benchmark, ask whether the user wants another run.
         while True:
             again = input("\nWould you like to run another benchmark? (y/n): ").strip().lower()
             if again in {"y", "n"}:
