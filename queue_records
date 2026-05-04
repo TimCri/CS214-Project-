@@ -1,0 +1,58 @@
+mport heapq
+from collections import deque
+
+class Patient:
+    def __init__(self, patient_id, name, age, condition, severity=5):
+        # basic patient info
+        self.patient_id = patient_id
+        self.name = name
+        self.age = age
+        self.condition = condition
+        
+        # severity determines priority (1 = most urgent)
+        self.severity = severity
+
+    def __repr__(self):
+        return f"{self.name} (Severity: {self.severity})"
+
+
+class HospitalQueueSystem:
+    def __init__(self):
+        # regular patients (first come, first served)
+        self.regular_queue = deque()
+        
+        # emergency patients (priority queue using heap)
+        self.emergency_queue = []
+
+    def add_patient(self, patient):
+        # if severity is high (low number), treat as emergency
+        if patient.severity <= 2:
+            # push into heap with severity as priority
+            heapq.heappush(self.emergency_queue, (patient.severity, patient))
+        else:
+            # otherwise add to normal queue
+            self.regular_queue.append(patient)
+
+    def treat_next_patient(self):
+        # always check emergency queue first
+        if self.emergency_queue:
+            return heapq.heappop(self.emergency_queue)[1]
+        
+        # if no emergencies, treat regular patients
+        if self.regular_queue:
+            return self.regular_queue.popleft()
+        
+        # no patients at all
+        return None
+
+    def view_all_patients(self):
+        # show emergency patients (sorted by priority)
+        emergency = [p[1] for p in sorted(self.emergency_queue)]
+        
+        # show regular queue in order
+        regular = list(self.regular_queue)
+        
+        return {
+            "emergency": emergency,
+            "regular": regular
+        }
