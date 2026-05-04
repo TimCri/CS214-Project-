@@ -1,58 +1,58 @@
-import heapq
+from __future__ import annotations
+
+'''
+deque is used because it supports efficient queue-style insertions
+and removals from the ends.
+'''
 from collections import deque
 
-class Patient:
-    def __init__(self, patient_id, name, age, condition, severity=5):
-        # basic patient info
-        self.patient_id = patient_id
-        self.name = name
-        self.age = age
-        self.condition = condition
-        
-        # severity determines priority (1 = most urgent)
-        self.severity = severity
+'''
+These typing imports make the queue code easier to understand:
+- Deque: used for internal queue storage
+- List: used when returning traversal results
+- Optional: used when search may return a record or None
+'''
+from typing import Deque, List, Optional
 
-    def __repr__(self):
-        return f"{self.name} (Severity: {self.severity})"
+from model import PatientRecord
 
 
-class HospitalQueueSystem:
-    def __init__(self):
-        # regular patients (first come, first served)
-        self.regular_queue = deque()
-        
-        # emergency patients (priority queue using heap)
-        self.emergency_queue = []
+class QueueRecords:
+    def __init__(self) -> None:
+        # deque is used as the underlying queue storage.
+        self.records: Deque[PatientRecord] = deque()
 
-    def add_patient(self, patient):
-        # if severity is high (low number), treat as emergency
-        if patient.severity <= 2:
-            # push into heap with severity as priority
-            heapq.heappush(self.emergency_queue, (patient.severity, patient))
-        else:
-            # otherwise add to normal queue
-            self.regular_queue.append(patient)
+    def insert_record(self, record: PatientRecord) -> None:
+        # Insert adds a patient to the back of the queue.
+        self.records.append(record)
 
-    def treat_next_patient(self):
-        # always check emergency queue first
-        if self.emergency_queue:
-            return heapq.heappop(self.emergency_queue)[1]
-        
-        # if no emergencies, treat regular patients
-        if self.regular_queue:
-            return self.regular_queue.popleft()
-        
-        # no patients at all
+    def search_record(self, record_id: int) -> Optional[PatientRecord]:
+        # Queues do not support direct lookup by record ID.
+        # We scan the queue from front to back until a match is found.
+        for record in self.records:
+            if record.id == record_id:
+                return record
         return None
 
-    def view_all_patients(self):
-        # show emergency patients (sorted by priority)
-        emergency = [p[1] for p in sorted(self.emergency_queue)]
-        
-        # show regular queue in order
-        regular = list(self.regular_queue)
-        
-        return {
-            "emergency": emergency,
-            "regular": regular
-        }
+    def delete_record(self, record_id: int) -> bool:
+        # Queue deletion by arbitrary ID is not a natural queue operation.
+        # To support the project requirement, rebuild the queue while skipping
+        # the first matching record.
+        buffer: Deque[PatientRecord] = deque()
+        deleted = False
+
+        while self.records:
+            record = self.records.popleft()
+
+            if not deleted and record.id == record_id:
+                deleted = True
+                continue
+
+            buffer.append(record)
+
+        self.records = buffer
+        return deleted
+
+    def traverse_records(self) -> List[PatientRecord]:
+        # Return all records in front-to-back queue order.
+        return list(self.records)
