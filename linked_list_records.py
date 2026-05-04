@@ -1,28 +1,59 @@
 from __future__ import annotations
-from typing import Optional
+
+'''
+dataclass is used to define the node object more cleanly.
+Each node stores one PatientRecord and a reference to the next node.
+'''
+from dataclasses import dataclass
+
+'''
+These typing imports make the linked list code easier to understand:
+- List: used when returning all records during traversal
+- Optional: used when a node reference may be missing, such as None
+'''
+from typing import List, Optional
+
 from model import PatientRecord
 
 
-class Node:
-    def __init__(self, record: PatientRecord):
-        self.record = record
-        self.next: Optional[Node] = None
+'''
+This class represents one node in the linked list.
+Each node stores:
+- one patient record
+- a pointer to the next node
+'''
+@dataclass
+class LinkedListNode:
+    record: PatientRecord
+    next: Optional["LinkedListNode"] = None
 
 
 class LinkedListRecords:
     def __init__(self) -> None:
-        self.head: Optional[Node] = None
+        # head points to the first node in the list.
+        # tail points to the last node so insert at the end stays efficient.
+        self.head: Optional[LinkedListNode] = None
+        self.tail: Optional[LinkedListNode] = None
 
     def insert_record(self, record: PatientRecord) -> None:
-        new_node = Node(record)
-        new_node.next = self.head
-        self.head = new_node
+        # Create a new node for the incoming patient record.
+        node = LinkedListNode(record=record)
+
+        # If the list is empty, the new node becomes both head and tail.
+        if self.head is None:
+            self.head = node
+            self.tail = node
+            return
+
+        # Otherwise, connect the new node after the current tail,
+        # then move tail forward to the new last node.
+        assert self.tail is not None
+        self.tail.next = node
+        self.tail = node
 
     def search_record(self, record_id: int) -> Optional[PatientRecord]:
-        Start at head
-        While current is not null:
-            If record ID matches → return
-            Move to next node
+        # Linked lists do not support direct indexed lookup by ID,
+        # so we scan node by node from the front.
         current = self.head
 
         while current is not None:
@@ -32,53 +63,39 @@ class LinkedListRecords:
 
         return None
 
-    def traverse_records(self) -> list[PatientRecord]:
-        current = head
-        while current != null:
-            display record
-            move to next
-        records = []
-        current = self.head
-
-        while current is not None:
-            records.append(current.record)
-            current = current.next
-
-        return records
-
-
-    def print_all_records(self) -> None:
-        print("\nAll Patient Records:")
-        current = self.head
-
-        while current is not None:
-            print(current.record)
-            current = current.next
-
-
-    
     def delete_record(self, record_id: int) -> bool:
-    
-        If head is empty → return false
-        If head matches → move head
-        Else traverse:
-            find node
-            link previous to next
-      
-        if self.head is None:
-            return False
-
-        # Case 1: delete head
-        if self.head.record.id == record_id:
-            self.head = self.head.next
-            return True
-
-        # Case 2: delete non-head
+        # Keep track of both current and previous nodes.
+        # This lets us unlink the matching node when found.
+        previous: Optional[LinkedListNode] = None
         current = self.head
-        while current.next is not None:
-            if current.next.record.id == record_id:
-                current.next = current.next.next
+
+        while current is not None:
+            if current.record.id == record_id:
+                # If deleting the first node, move head forward.
+                if previous is None:
+                    self.head = current.next
+                else:
+                    # Skip over the current node.
+                    previous.next = current.next
+
+                # If deleting the last node, move tail backward.
+                if current == self.tail:
+                    self.tail = previous
+
                 return True
+
+            previous = current
             current = current.next
 
         return False
+
+    def traverse_records(self) -> List[PatientRecord]:
+        # Walk from head to tail and collect each record.
+        result: List[PatientRecord] = []
+        current = self.head
+
+        while current is not None:
+            result.append(current.record)
+            current = current.next
+
+        return result
