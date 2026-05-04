@@ -1,4 +1,4 @@
-# 🏥 Patient Record Benchmark System
+# 🏥 Patient Record Management System
 
 ## 📌 Overview
 This project compares the performance of different data structures for managing patient records. It benchmarks **insert, search, delete, and traverse** operations using real dataset input.
