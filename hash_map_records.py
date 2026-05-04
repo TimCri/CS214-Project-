@@ -24,7 +24,7 @@ class HashMapRecords:
         self.records: Dict[int, PatientRecord] = {}
 
     def insert_record(self, record: PatientRecord) -> None:
-        # Insert/update by key.
+        # Insert or update by key.
         self.records[record.id] = record
 
     def search_record(self, record_id: int) -> Optional[PatientRecord]:
@@ -40,6 +40,7 @@ class HashMapRecords:
             del self.records[record_id]
             # Return True to signal that a record was found and removed.
             return True
+
         # Return False when the requested ID was not found.
         # This gives the caller a clear success/failure result.
         return False
