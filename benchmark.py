@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 '''
-statistics is used to calculate the average runtime across multiple test runs.
-Running the same benchmark several times helps reduce noise from tiny timing variations.
+statistics is used to calculate the average runtime and memory usage
+across multiple test runs.
 '''
 import statistics
 
@@ -11,6 +11,12 @@ time provides the high-resolution timer used for benchmarking.
 perf_counter() is preferred for timing short operations because it is precise.
 '''
 import time
+
+'''
+tracemalloc measures Python memory allocations during each benchmarked operation.
+This lets the project report average peak memory alongside runtime.
+'''
+import tracemalloc
 
 '''
 dataclass automatically creates useful methods for simple data-holder classes.
@@ -25,8 +31,9 @@ These typing imports make the purpose of variables and parameters clearer:
 - Dict: used for dictionaries such as lookup tables and summary tables
 - Iterable: used for any collection we can loop through
 - List: used for ordered collections such as timings and records
+- Tuple: used when returning both time and memory measurements
 '''
-from typing import Any, Callable, Dict, Iterable, List
+from typing import Any, Callable, Dict, Iterable, List, Tuple
 
 from model import PatientRecord
 
@@ -39,11 +46,8 @@ It bundles together everything the main program needs to display:
 - how many records were used
 - how many runs were averaged
 - the measured average runtime
+- the measured average peak memory usage
 - the theoretical time complexity
-
-frozen=True makes instances immutable after creation.
-That is helpful here because benchmark results should behave like
-fixed report data, not something that gets changed later by mistake.
 '''
 @dataclass(frozen=True)
 class BenchmarkResult:
@@ -52,12 +56,12 @@ class BenchmarkResult:
     record_count: int
     runs: int
     average_seconds: float
+    average_peak_memory_bytes: int
     time_complexity: str
 
 
 # These are theoretical Big-O labels.
-# They are not calculated from the measured timing results.
-# They describe expected growth behavior as input size increases.
+# They are not calculated from the measured benchmark results.
 OPERATION_COMPLEXITIES: Dict[str, Dict[str, str]] = {
     "Dynamic Array": {
         "insert": "O(1) amortized",
@@ -88,43 +92,70 @@ OPERATION_COMPLEXITIES: Dict[str, Dict[str, str]] = {
 
 def format_seconds(seconds: float) -> str:
     # Convert the raw timing value into a consistent string format for display.
-    # A fixed decimal format makes benchmark output easier to compare in the console.
     return f"{seconds:.8f} sec"
+
+
+def format_memory_size(memory_bytes: int) -> str:
+    # Convert raw byte counts into a more readable unit for console output.
+    units = ["B", "KB", "MB", "GB"]
+    size = float(memory_bytes)
+
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+
+    return f"{memory_bytes} B"
 
 
 def build_structure(structure: Any, records: Iterable[PatientRecord]) -> Any:
     # Many benchmarks need a fully populated structure before timing an operation.
-    # This helper avoids repeating the same insert loop in multiple functions.
     for record in records:
         structure.insert_record(record)
 
-    # Return the now-populated structure so it can be used immediately.
     return structure
 
 
-def benchmark_insert(structure_class: Any, records: List[PatientRecord], runs: int = 5) -> float:
-    # This function measures how long it takes to insert all selected records
-    # into a fresh instance of the chosen data structure.
+def measure_operation(operation: Callable[[], Any]) -> Tuple[float, int]:
+    # Measure both runtime and peak memory for one operation call.
+    # Only the selected operation is measured, not the structure setup.
+    tracemalloc.start()
+
+    try:
+        start = time.perf_counter()
+        operation()
+        end = time.perf_counter()
+        _, peak_memory = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    return end - start, peak_memory
+
+
+def run_insert_operation(structure: Any, records: List[PatientRecord]) -> None:
+    # Insert benchmarks measure the cost of inserting all selected records
+    # into a new empty structure.
+    for record in records:
+        structure.insert_record(record)
+
+
+def benchmark_insert(
+    structure_class: Any,
+    records: List[PatientRecord],
+    runs: int = 5,
+) -> Tuple[float, int]:
     timings: List[float] = []
+    memory_peaks: List[int] = []
 
     for _ in range(runs):
-        # Create a new empty structure for each run so every insert test starts fairly.
         structure = structure_class()
+        elapsed_seconds, peak_memory = measure_operation(
+            lambda: run_insert_operation(structure, records)
+        )
+        timings.append(elapsed_seconds)
+        memory_peaks.append(peak_memory)
 
-        # Start timing immediately before the insert loop begins.
-        start = time.perf_counter()
-
-        for record in records:
-            structure.insert_record(record)
-
-        # Stop timing right after all inserts are complete.
-        end = time.perf_counter()
-
-        # Store the elapsed time for this run.
-        timings.append(end - start)
-
-    # Return the average runtime across all runs.
-    return statistics.mean(timings)
+    return statistics.mean(timings), int(statistics.mean(memory_peaks))
 
 
 def benchmark_search(
@@ -132,22 +163,19 @@ def benchmark_search(
     records: List[PatientRecord],
     search_id: int,
     runs: int = 5,
-) -> float:
-    # This function measures how long it takes to search for one record ID.
+) -> Tuple[float, int]:
     timings: List[float] = []
+    memory_peaks: List[int] = []
 
     for _ in range(runs):
-        # Search should be measured on a structure that already contains data.
         structure = build_structure(structure_class(), records)
+        elapsed_seconds, peak_memory = measure_operation(
+            lambda: structure.search_record(search_id)
+        )
+        timings.append(elapsed_seconds)
+        memory_peaks.append(peak_memory)
 
-        # Time only the search operation itself, not the setup step.
-        start = time.perf_counter()
-        structure.search_record(search_id)
-        end = time.perf_counter()
-
-        timings.append(end - start)
-
-    return statistics.mean(timings)
+    return statistics.mean(timings), int(statistics.mean(memory_peaks))
 
 
 def benchmark_delete(
@@ -155,42 +183,36 @@ def benchmark_delete(
     records: List[PatientRecord],
     delete_id: int,
     runs: int = 5,
-) -> float:
-    # This function measures how long it takes to delete one record ID.
+) -> Tuple[float, int]:
     timings: List[float] = []
+    memory_peaks: List[int] = []
 
     for _ in range(runs):
-        # Delete is measured on a fresh populated structure each time.
-        # This avoids invalid later runs after a record has already been removed.
         structure = build_structure(structure_class(), records)
+        elapsed_seconds, peak_memory = measure_operation(
+            lambda: structure.delete_record(delete_id)
+        )
+        timings.append(elapsed_seconds)
+        memory_peaks.append(peak_memory)
 
-        # Time only the delete operation itself.
-        start = time.perf_counter()
-        structure.delete_record(delete_id)
-        end = time.perf_counter()
-
-        timings.append(end - start)
-
-    return statistics.mean(timings)
+    return statistics.mean(timings), int(statistics.mean(memory_peaks))
 
 
-def benchmark_traverse(structure_class: Any, records: List[PatientRecord], runs: int = 5) -> float:
-    # This function measures how long it takes to traverse all records
-    # already stored in the structure.
+def benchmark_traverse(
+    structure_class: Any,
+    records: List[PatientRecord],
+    runs: int = 5,
+) -> Tuple[float, int]:
     timings: List[float] = []
+    memory_peaks: List[int] = []
 
     for _ in range(runs):
-        # Build the structure first so traversal has actual records to visit.
         structure = build_structure(structure_class(), records)
+        elapsed_seconds, peak_memory = measure_operation(structure.traverse_records)
+        timings.append(elapsed_seconds)
+        memory_peaks.append(peak_memory)
 
-        # Time only the traversal step.
-        start = time.perf_counter()
-        structure.traverse_records()
-        end = time.perf_counter()
-
-        timings.append(end - start)
-
-    return statistics.mean(timings)
+    return statistics.mean(timings), int(statistics.mean(memory_peaks))
 
 
 def run_selected_benchmark(
@@ -200,53 +222,40 @@ def run_selected_benchmark(
     records: List[PatientRecord],
     runs: int = 5,
 ) -> BenchmarkResult:
-    # This is the main dispatcher for the benchmark module.
-    # It receives the user's selections from main.py and routes them
-    # to the correct benchmark function.
+    # This dispatcher routes the user's selection to the correct benchmark.
     if not records:
         raise ValueError("At least one record is required for benchmarking.")
 
-    # Each operation name maps to the function that knows how to benchmark it.
-    # The lambda wrappers delay execution until the selected operation is called.
-    operations: Dict[str, Callable[[], float]] = {
+    operations: Dict[str, Callable[[], Tuple[float, int]]] = {
         "insert": lambda: benchmark_insert(structure_class, records, runs),
-
-        # Search uses the middle record ID as a consistent benchmark target.
         "search": lambda: benchmark_search(
             structure_class,
             records,
             records[len(records) // 2].id,
             runs,
         ),
-
-        # Delete uses the last record ID as a consistent benchmark target.
         "delete": lambda: benchmark_delete(
             structure_class,
             records,
             records[-1].id,
             runs,
         ),
-
         "traverse": lambda: benchmark_traverse(structure_class, records, runs),
     }
 
-    # Reject unsupported operation names before continuing.
     if operation_name not in operations:
         raise ValueError(f"Unsupported operation: {operation_name}")
 
-    # Run the selected benchmark and capture its average timing result.
-    average_seconds = operations[operation_name]()
-
-    # Look up the matching Big-O label for the selected structure and operation.
+    average_seconds, average_peak_memory_bytes = operations[operation_name]()
     complexity = OPERATION_COMPLEXITIES[structure_name][operation_name]
 
-    # Package the benchmark output into one result object for display in main.py.
     return BenchmarkResult(
         structure_name=structure_name,
         operation_name=operation_name,
         record_count=len(records),
         runs=runs,
         average_seconds=average_seconds,
+        average_peak_memory_bytes=average_peak_memory_bytes,
         time_complexity=complexity,
     )
 
@@ -256,27 +265,17 @@ def run_all_structures_summary(
     records: List[PatientRecord],
     runs: int = 5,
 ) -> Dict[str, Dict[str, BenchmarkResult]]:
-    # This function builds the "all structures" summary table.
-    # Instead of benchmarking one structure and one operation,
-    # it benchmarks insert, search, delete, and traverse across every structure.
+    # This function builds the comparison table across all structures.
     if not records:
         raise ValueError("At least one record is required for benchmarking.")
 
-    # These are the operations shown in the comparison table.
     operations = ["insert", "search", "delete", "traverse"]
-
-    # The summary result is a nested dictionary:
-    # outer key  -> structure name
-    # inner key  -> operation name
-    # value      -> BenchmarkResult
     summary: Dict[str, Dict[str, BenchmarkResult]] = {}
 
     for structure_name, structure_class in structures.items():
-        # Create a container for this structure's benchmark results.
         summary[structure_name] = {}
 
         for operation_name in operations:
-            # Reuse the single-benchmark function so all benchmark logic stays centralized.
             summary[structure_name][operation_name] = run_selected_benchmark(
                 structure_name=structure_name,
                 structure_class=structure_class,
@@ -285,5 +284,4 @@ def run_all_structures_summary(
                 runs=runs,
             )
 
-    # Return the completed summary table to main.py for printing.
     return summary
