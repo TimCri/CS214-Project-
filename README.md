@@ -6,10 +6,10 @@ This project compares the performance of different data structures for managing 
 ---
 
 ## 🧠 Data Structures Implemented
-- Dynamic Array (Python List) :contentReference[oaicite:0]{index=0}  
-- Linked List :contentReference[oaicite:1]{index=1}  
-- Queue (Deque-based) :contentReference[oaicite:2]{index=2}  
-- Hash Map (Dictionary) :contentReference[oaicite:3]{index=3}  
+- Dynamic Array (Python List)   
+- Linked List 
+- Queue (Deque-based) :
+- Hash Map (Dictionary)
 
 All structures support:
 - `insert_record`
@@ -20,14 +20,14 @@ All structures support:
 ---
 
 ## 🧾 Dataset
-- Data is loaded from a CSV file using a custom loader :contentReference[oaicite:4]{index=4}  
-- Each row is converted into a `PatientRecord` object :contentReference[oaicite:5]{index=5}  
+- Data is loaded from a CSV file using a custom loader
+- Each row is converted into a `PatientRecord` object   
 - Records include ID, name, age, medical condition, hospital, billing info, etc.
 
 ---
 
 ## 🧪 Benchmarking
-- Benchmarks use `time.perf_counter()` for accurate timing :contentReference[oaicite:6]{index=6}  
+- Benchmarks use `time.perf_counter()` for accurate timing 
 - Each test runs multiple times and averages results  
 - Includes both:
   - Measured runtime
