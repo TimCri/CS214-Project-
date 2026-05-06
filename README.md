@@ -4,6 +4,9 @@
 This project compares the performance of different data structures for managing patient records. It benchmarks **insert, search, delete, and traverse** operations using real dataset input.
 
 ---
+## Presentation
+Canva [Presentation](https://www.canva.com/design/DAHIutiN2yk/EwMgeGSUFckB4_qJ8M8n3A/edit)
+---
 
 ## 🧠 Data Structures Implemented
 - Dynamic Array (Python List)   
@@ -38,6 +41,3 @@ All structures support:
 ## ▶️ How to Run
 ```bash
 python main.py
-
-## Presentation
-Canva: (https://www.canva.com/design/DAHIutiN2yk/EwMgeGSUFckB4_qJ8M8n3A/edit)
