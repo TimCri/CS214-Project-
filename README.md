@@ -38,3 +38,6 @@ All structures support:
 ## ▶️ How to Run
 ```bash
 python main.py
+
+## Presentation
+Canva: (https://www.canva.com/design/DAHIutiN2yk/EwMgeGSUFckB4_qJ8M8n3A/edit)
